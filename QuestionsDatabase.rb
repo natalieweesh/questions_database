@@ -43,15 +43,6 @@ class User
     nil
   end
 
-  # def authored_questions
-  #   question_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
-  #     SELECT  id
-  #     FROM    questions
-  #     WHERE   author_id = ?
-  #     SQL
-  #   question_ids.map {|hash| Question.find_by_id(hash["id"])}
-  # end
-
   def authored_questions
     Question.find_by_author_id(@id)
   end
@@ -60,6 +51,9 @@ class User
     Reply.find_by_user_id(@id)
   end
 
+  def followed_questions
+    QuestionFollower.followed_questions_for_user_id(@id)
+  end
 
 
 end
@@ -104,6 +98,10 @@ class Question
     Reply.find_by_question_id(@id)
   end
 
+  def followers
+    QuestionFollower.followers_for_question_id(@id)
+  end
+
 end
 
 class QuestionFollower
@@ -125,6 +123,28 @@ class QuestionFollower
       SQL
     return QuestionFollower.new(hash) unless hash.nil?
     nil
+  end
+
+  def self.followers_for_question_id(question_id)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT  users.id, users.fname, users.lname
+      FROM    question_followers
+      JOIN    users
+        ON      users.id = question_followers.follower_id
+      WHERE   question_id = ?
+      SQL
+    hash_array.map {|hash| User.new(hash)}
+  end
+
+  def self.followed_questions_for_user_id(user_id)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+      SELECT  questions.id, questions.title, questions.body, questions.author_id
+      FROM    question_followers
+      JOIN    questions
+        ON    questions.id = question_followers.question_id
+      WHERE   question_followers.follower_id = ?
+      SQL
+    hash_array.map {|hash| Question.new(hash)}
   end
 
 end
@@ -166,6 +186,31 @@ class Reply
       SELECT  *
       FROM    replies
       WHERE   author_id = ?
+      SQL
+    reply_ids.map {|hash| Reply.new(hash)}
+  end
+
+  def author
+    User.find_by_id(@author_id)
+  end
+
+  def question
+    Question.find_by_id(@question_id)
+  end
+
+  def parent_reply
+    if @parent_id
+      Reply.find_by_id(@parent_id)
+    else
+      nil
+    end
+  end
+
+  def child_replies
+    reply_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
+      SELECT  *
+      FROM    replies
+      WHERE   parent_id = ?
       SQL
     reply_ids.map {|hash| Reply.new(hash)}
   end

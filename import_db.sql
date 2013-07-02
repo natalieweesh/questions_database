@@ -39,29 +39,20 @@ CREATE TABLE question_likes(
   FOREIGN KEY(question_id) REFERENCES questions(id)
   );
 
-INSERT INTO users (fname, lname) VALUES ('Prolific', 'User');
-INSERT INTO users (fname, lname) VALUES ('Quiet', 'User');
-INSERT INTO users (fname, lname) VALUES ('Donald', 'Duck');
-INSERT INTO users (fname, lname) VALUES ('Daffy', 'Duck');
+INSERT INTO users (fname, lname) VALUES ('Prolific', 'User'),
+('Quiet', 'User'),
+('Donald', 'Duck'),
+('Daffy', 'Duck');
 
 INSERT INTO questions (title, body, author_id)
   VALUES ('Why are there so many songs about rainbows?',
-                       'Whats on the other side', 1);
-INSERT INTO questions (title, body, author_id)
-  VALUES ('How much would would a woodchuck chuck?', NULL, 2);
+                       'Whats on the other side', 1),
+          ('How much would would a woodchuck chuck?', NULL, 2);
 
-INSERT INTO question_followers (question_id, follower_id) VALUES (1, 1);
-INSERT INTO question_followers (question_id, follower_id) VALUES (1, 2);
-INSERT INTO question_followers (question_id, follower_id) VALUES (1, 3);
-INSERT INTO question_followers (question_id, follower_id) VALUES (1, 4);
-INSERT INTO question_followers (question_id, follower_id) VALUES (2, 2);
-INSERT INTO question_followers (question_id, follower_id) VALUES (2, 4);
+INSERT INTO question_followers (question_id, follower_id) VALUES (1, 1),(1, 2),
+ (1, 3),(1, 4),(2, 2), (2, 4);
 
 INSERT INTO replies (question_id, parent_id, body, author_id)
-  VALUES (1, NULL, 'Dont know', 3);
-INSERT INTO replies (question_id, parent_id, body, author_id)
-  VALUES (1, 1, 'I dont know either', 4);
+  VALUES (1, NULL, 'Dont know', 3), (1, 1, 'I dont know either', 4);
 
-INSERT INTO question_likes (user_id, question_id) VALUES (1, 2);
-INSERT INTO question_likes (user_id, question_id) VALUES (2, 2);
-INSERT INTO question_likes (user_id, question_id) VALUES (2, 1);
+INSERT INTO question_likes (user_id, question_id) VALUES (1, 2),(2, 2),(2, 1);
