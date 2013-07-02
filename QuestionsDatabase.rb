@@ -57,12 +57,7 @@ class User
   end
 
   def authored_replies
-    reply_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
-      SELECT  id
-      FROM    replies
-      WHERE   author_id = ?
-      SQL
-    reply_ids.map {|hash| Reply.find_by_id(hash["id"])}
+    Reply.find_by_user_id(@id)
   end
 
 
@@ -93,7 +88,7 @@ class Question
   end
 
   def self.find_by_author_id(author_id)
-    hash_array = QuestionsDatabase.instance.execute(<<-SQL, author_id)[
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, author_id)
       SELECT  *
       FROM    questions
       WHERE   author_id = ?
@@ -103,6 +98,10 @@ class Question
 
   def author
     User.find_by_id(@author_id)
+  end
+
+  def replies
+    Reply.find_by_question_id(@id)
   end
 
 end
@@ -151,6 +150,24 @@ class Reply
       SQL
     return Reply.new(hash) unless hash.nil?
     nil
+  end
+
+  def self.find_by_question_id(question_id)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT *
+      FROM replies
+      WHERE replies.question_id = ?
+      SQL
+    hash_array.map {|hash| Reply.new(hash)}
+  end
+
+  def self.find_by_user_id(user_id)
+    reply_ids = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+      SELECT  *
+      FROM    replies
+      WHERE   author_id = ?
+      SQL
+    reply_ids.map {|hash| Reply.new(hash)}
   end
 
 end
