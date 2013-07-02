@@ -16,10 +16,10 @@ class User
   attr_accessor :fname, :lname
   attr_reader :id
 
-  def initialize(id, fname, lname)
-    @fname = fname
-    @lname = lname
-    @id = id
+  def initialize(options = {})
+    @fname = options["fname"]
+    @lname = options["lname"]
+    @id = options["id"]
   end
 
   def self.find_by_id(id)
@@ -28,7 +28,7 @@ class User
       FROM    users
       WHERE   id = ?
       SQL
-    return User.new(hash["id"], hash["fname"], hash["lname"]) unless hash.nil?
+    return User.new(hash) unless hash.nil?
     nil
   end
 
@@ -39,17 +39,21 @@ class User
       WHERE   fname = ?
       AND     lname = ?
       SQL
-    return User.new(hash["id"], hash["fname"], hash["lname"]) unless hash.nil?
+    return User.new(hash) unless hash.nil?
     nil
   end
 
+  # def authored_questions
+  #   question_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
+  #     SELECT  id
+  #     FROM    questions
+  #     WHERE   author_id = ?
+  #     SQL
+  #   question_ids.map {|hash| Question.find_by_id(hash["id"])}
+  # end
+
   def authored_questions
-    question_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
-      SELECT  id
-      FROM    questions
-      WHERE   author_id = ?
-      SQL
-    question_ids.map {|hash| Question.find_by_id(hash["id"])}
+    Question.find_by_author_id(@id)
   end
 
   def authored_replies
@@ -70,11 +74,11 @@ class Question
   attr_accessor :title, :body, :author_id
   attr_reader :id
 
-  def initialize(id, title, body, author_id)
-    @title = title
-    @body = body
-    @id = id
-    @author_id = author_id
+  def initialize(options = {})
+    @title = options["title"]
+    @body = options["body"]
+    @id = options["id"]
+    @author_id = options["author_id"]
   end
 
 
@@ -84,18 +88,21 @@ class Question
       FROM    questions
       WHERE   id = ?
       SQL
-    return Question.new(hash["id"], hash["title"], hash["body"], hash["author_id"]) unless hash.nil?
+    return Question.new(hash) unless hash.nil?
     nil
   end
 
   def self.find_by_author_id(author_id)
-    hash = QuestionsDatabase.instance.execute(<<-SQL, author_id)[0]
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, author_id)[
       SELECT  *
       FROM    questions
       WHERE   author_id = ?
       SQL
-    return Question.new(hash["id"], hash["title"], hash["body"], hash["author_id"]) unless hash.nil?
-    nil
+    hash_array.map {|hash| Question.new(hash)}
+  end
+
+  def author
+    User.find_by_id(@author_id)
   end
 
 end
@@ -105,10 +112,10 @@ class QuestionFollower
   attr_accessor :question_id, :follower_id
   attr_reader :id
 
-  def initialize(id, question_id, follower_id)
-    @question_id = question_id
-    @follower_id = follower_id
-    @id = id
+  def initialize(options = {})
+    @question_id = options["question_id"]
+    @follower_id = options["follower_id"]
+    @id = options["id"]
   end
 
   def self.find_by_id(id)
@@ -117,7 +124,7 @@ class QuestionFollower
       FROM    question_followers
       WHERE   id = ?
       SQL
-    return QuestionFollower.new(hash["id"], hash["question_id"], hash["follower_id"]) unless hash.nil?
+    return QuestionFollower.new(hash) unless hash.nil?
     nil
   end
 
@@ -128,12 +135,12 @@ class Reply
   attr_accessor :question_id, :parent_id, :body, :author_id
   attr_reader :id
 
-  def initialize(id, question_id, parent_id, body, author_id)
-    @question_id = question_id
-    @parent_id = parent_id
-    @body = body
-    @author_id = author_id
-    @id = id
+  def initialize(options = {})
+    @question_id = options["question_id"]
+    @parent_id = options["parent_id"]
+    @body = options["body"]
+    @author_id = options["author_id"]
+    @id = options["id"]
   end
 
   def self.find_by_id(id)
@@ -142,7 +149,7 @@ class Reply
       FROM    replies
       WHERE   id = ?
       SQL
-    return Reply.new(hash["id"], hash["question_id"], hash["parent_id"], hash["body"], hash["author_id"]) unless hash.nil?
+    return Reply.new(hash) unless hash.nil?
     nil
   end
 
@@ -152,10 +159,10 @@ class QuestionLike
   attr_accessor :user_id, :question_id
   attr_reader :id
 
-  def initialize(id, user_id, question_id)
-    @user_id = user_id
-    @question_id = question_id
-    @id = id
+  def initialize(options = {})
+    @user_id = options["user_id"]
+    @question_id = options["question_id"]
+    @id = options["id"]
   end
 
   def self.find_by_id(id)
@@ -164,7 +171,7 @@ class QuestionLike
       FROM    question_likes
       WHERE   id = ?
       SQL
-    return QuestionLike.new(hash["id"], hash["user_id"], hash["question_id"]) unless hash.nil?
+    return QuestionLike.new(hash) unless hash.nil?
     nil
   end
 
