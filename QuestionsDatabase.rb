@@ -98,10 +98,7 @@ class User
     end
   end
 
-  protected
-  def set_id(id)
-    @id = id
-  end
+
 
 end
 
@@ -182,6 +179,7 @@ class Question
     )
     end
   end
+
 
 
 end
