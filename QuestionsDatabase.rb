@@ -44,21 +44,21 @@ class User
   end
 
   def authored_questions
-    hash_array = QuestionsDatabase.instance.execute(<<-SQL, @id)
-      SELECT  *
+    question_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
+      SELECT  id
       FROM    questions
       WHERE   author_id = ?
       SQL
-    hash_array.map {|hash| Question.new(hash["id"], hash["title"], hash["body"], hash["author_id"])}
+    question_ids.map {|hash| Question.find_by_id(hash["id"])}
   end
 
   def authored_replies
-    hash_array = QuestionsDatabase.instance.execute(<<-SQL, @id)
-      SELECT  *
+    reply_ids = QuestionsDatabase.instance.execute(<<-SQL, @id)
+      SELECT  id
       FROM    replies
       WHERE   author_id = ?
       SQL
-    hash_array.map {|hash| Reply.new(hash["id"], hash["question_id"], hash["parent_id"], hash["body"], hash["author_id"])}
+    reply_ids.map {|hash| Reply.find_by_id(hash["id"])}
   end
 
 
@@ -83,6 +83,16 @@ class Question
       SELECT  *
       FROM    questions
       WHERE   id = ?
+      SQL
+    return Question.new(hash["id"], hash["title"], hash["body"], hash["author_id"]) unless hash.nil?
+    nil
+  end
+
+  def self.find_by_author_id(author_id)
+    hash = QuestionsDatabase.instance.execute(<<-SQL, author_id)[0]
+      SELECT  *
+      FROM    questions
+      WHERE   author_id = ?
       SQL
     return Question.new(hash["id"], hash["title"], hash["body"], hash["author_id"]) unless hash.nil?
     nil
