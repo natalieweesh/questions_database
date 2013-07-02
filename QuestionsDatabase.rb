@@ -102,6 +102,10 @@ class Question
     QuestionFollower.followers_for_question_id(@id)
   end
 
+  def self.most_followed(n)
+    QuestionFollower.most_followed_questions(n)
+  end
+
 end
 
 class QuestionFollower
@@ -143,6 +147,19 @@ class QuestionFollower
       JOIN    questions
         ON    questions.id = question_followers.question_id
       WHERE   question_followers.follower_id = ?
+      SQL
+    hash_array.map {|hash| Question.new(hash)}
+  end
+
+  def self.most_followed_questions(n)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, n)
+      SELECT   questions.id, questions.title, questions.body, questions.author_id
+      FROM     questions
+      JOIN     question_followers
+      ON       questions.id = question_followers.question_id
+      GROUP BY questions.id
+      ORDER BY COUNT(*)
+      LIMIT ?
       SQL
     hash_array.map {|hash| Question.new(hash)}
   end
@@ -235,6 +252,25 @@ class QuestionLike
       SQL
     return QuestionLike.new(hash) unless hash.nil?
     nil
+  end
+
+  def self.likers_for_question_id(question_id)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT   users.id, users.fname, users.lname
+      FROM     question_likes
+      JOIN     users
+      ON       users.id = question_likes.user_id
+      WHERE    question_likes.question_id = ?
+      SQL
+    hash_array.map {|hash| User.new(hash)}
+  end
+
+  def self.num_likes_for_question_id(question_id)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, question_id)[0]["COUNT(*)"]
+      SELECT   COUNT(*)
+      FROM     question_likes
+      WHERE    question_likes.question_id = ?
+      SQL
   end
 
 end
