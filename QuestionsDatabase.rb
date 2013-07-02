@@ -52,6 +52,15 @@ class User
     hash_array.map {|hash| Question.new(hash["id"], hash["title"], hash["body"], hash["author_id"])}
   end
 
+  def authored_replies
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, @id)
+      SELECT  *
+      FROM    replies
+      WHERE   author_id = ?
+      SQL
+    hash_array.map {|hash| Reply.new(hash["id"], hash["question_id"], hash["parent_id"], hash["body"], hash["author_id"])}
+  end
+
 
 
 end
