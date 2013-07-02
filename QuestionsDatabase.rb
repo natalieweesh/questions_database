@@ -19,7 +19,6 @@ class User
   def initialize(options = {})
     @fname = options["fname"]
     @lname = options["lname"]
-    @id = options["id"]
   end
 
   def self.find_by_id(id)
@@ -28,7 +27,11 @@ class User
       FROM    users
       WHERE   id = ?
       SQL
-    return User.new(hash) unless hash.nil?
+    unless hash.nil?
+      user = User.new(hash)
+      user.set_id(id)
+      return user
+    end
     nil
   end
 
@@ -39,7 +42,11 @@ class User
       WHERE   fname = ?
       AND     lname = ?
       SQL
-    return User.new(hash) unless hash.nil?
+    unless hash.nil?
+      user = User.new(hash)
+      user.set_id(hash["id"])
+      return user
+    end
     nil
   end
 
@@ -55,6 +62,46 @@ class User
     QuestionFollower.followed_questions_for_user_id(@id)
   end
 
+  def liked_questions
+    QuestionLike.liked_questions_for_user_id(@id)
+  end
+
+  def average_karma
+    karma = QuestionsDatabase.instance.execute(<<-SQL, @id)[0]["AVG(count)"]
+      SELECT AVG(count)
+      FROM
+        (SELECT   COUNT(*) count
+        FROM     question_likes
+        JOIN     questions
+        ON       questions.id = question_likes.question_id
+        WHERE    questions.author_id = ?
+        GROUP BY questions.id)
+      SQL
+    karma
+  end
+
+  def save
+    if @id == nil
+      QuestionsDatabase.instance.execute(<<-SQL, @fname, @lname
+      INSERT INTO users (fname, lname)
+      VALUES (?, ?)
+      SQL
+    )
+    @id = QuestionsDatabase.instance.last_insert_row_id
+    else
+      QuestionsDatabase.instance.execute(<<-SQL, @fname, @lname, @id
+      UPDATE users
+      SET fname = ?, lname = ?
+      WHERE id = ?
+      SQL
+    )
+    end
+  end
+
+  protected
+  def set_id(id)
+    @id = id
+  end
 
 end
 
@@ -105,6 +152,37 @@ class Question
   def self.most_followed(n)
     QuestionFollower.most_followed_questions(n)
   end
+
+  def likers
+    QuestionLike.likers_for_question_id(@id)
+  end
+
+  def num_likes
+    QuestionLike.num_likes_for_question_id(@id)
+  end
+
+  def most_liked(n)
+    QuestionLike.most_liked_questions(n)
+  end
+
+  def save
+    if @id == nil
+      QuestionsDatabase.instance.execute(<<-SQL, @title, @body, @author_id
+      INSERT INTO questions (title, body, author_id)
+      VALUES (?, ?, ?)
+      SQL
+    )
+    @id = QuestionsDatabase.instance.last_insert_row_id
+    else
+      QuestionsDatabase.instance.execute(<<-SQL, @title, @body, @author_id, @id
+      UPDATE questions
+      SET title = ?, body = ?, author_id = ?
+      WHERE id = ?
+      SQL
+    )
+    end
+  end
+
 
 end
 
@@ -158,7 +236,7 @@ class QuestionFollower
       JOIN     question_followers
       ON       questions.id = question_followers.question_id
       GROUP BY questions.id
-      ORDER BY COUNT(*)
+      ORDER BY COUNT(*) DESC
       LIMIT ?
       SQL
     hash_array.map {|hash| Question.new(hash)}
@@ -232,6 +310,24 @@ class Reply
     reply_ids.map {|hash| Reply.new(hash)}
   end
 
+  def save
+    if @id == nil
+      QuestionsDatabase.instance.execute(<<-SQL, @question_id, @parent_id, @body, @author_id
+      INSERT INTO replies (question_id, parent_id, body, author_id)
+      VALUES (?, ?, ?, ?)
+      SQL
+    )
+    @id = QuestionsDatabase.instance.last_insert_row_id
+    else
+      QuestionsDatabase.instance.execute(<<-SQL, @question_id, @parent_id, @body, @author_id, @id
+      UPDATE replies
+      SET question_id = ?, parent_id = ?, body = ?, author_id = ?
+      WHERE id = ?
+      SQL
+    )
+    end
+  end
+
 end
 
 class QuestionLike
@@ -272,5 +368,83 @@ class QuestionLike
       WHERE    question_likes.question_id = ?
       SQL
   end
+
+  def self.most_liked_questions(n)
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL, n)
+      SELECT   questions.id, questions.title, questions.body, questions.author_id
+      FROM     questions
+      JOIN     question_likes
+      ON       questions.id = question_likes.question_id
+      GROUP BY questions.id
+      ORDER BY COUNT(*) DESC
+      LIMIT ?
+      SQL
+    hash_array.map {|hash| Question.new(hash)}
+  end
+
+end
+
+
+class Tag
+  attr_reader :id
+
+  attr_accessor :tag
+
+  def initialize(options={})
+    @tag = options["tag"]
+    @id = options["id"]
+  end
+
+  def self.find_by_id(id)
+    hash = QuestionsDatabase.instance.execute(<<-SQL, id)[0]
+      SELECT  *
+      FROM    tags
+      WHERE   id = ?
+      SQL
+    return Tag.new(hash) unless hash.nil?
+    nil
+  end
+
+  def self.most_popular
+    hash_array = QuestionsDatabase.instance.execute(<<-SQL)
+      SELECT   inner_thing.id, inner_thing.title, inner_thing.body, inner_thing.author_id
+      FROM     (
+        SELECT questions.id, questions.title, questions.body, questions.author_id, COUNT(*) count
+        FROM   questions
+        JOIN   question_likes
+        ON     question_likes.question_id = questions.id
+        GROUP BY question_likes.question_id
+        ) inner_thing
+      JOIN question_tags
+      ON inner_thing.id = question_tags.question_id
+      GROUP BY question_tags.tag_id
+      HAVING inner_thing.count = MAX(inner_thing.count)
+      SQL
+      hash_array.map { |hash| Question.new(hash)}
+  end
+
+end
+
+class QuestionTag
+  attr_reader :id
+
+  attr_accessor :question_id, :tag_id
+
+  def initialize(options={})
+    @question_id = options["question_id"]
+    @tag_id = options["tag_id"]
+    @id = options["id"]
+  end
+
+  def self.find_by_id(id)
+    hash = QuestionsDatabase.instance.execute(<<-SQL, id)[0]
+      SELECT  *
+      FROM    question_tags
+      WHERE   id = ?
+      SQL
+    return QuestionTag.new(hash) unless hash.nil?
+    nil
+  end
+
 
 end
